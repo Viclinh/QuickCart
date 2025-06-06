@@ -1,4 +1,4 @@
-# Appliance Similarity Search
+# QuickCart
 
 This project implements a semantic search system for appliances using embeddings generated from a Hugging Face transformer model.
 

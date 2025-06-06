@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appliance Finder</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; color: #333; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .result { border: 1px solid #ddd; padding: 15px; margin: 15px 0; border-radius: 5px; background-color: #fff; display: flex; }
+        .image-container { width: 150px; height: 150px; margin-right: 15px; display: flex; align-items: center; justify-content: center; }
+        .image-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .details { flex: 1; }
+        input, button { padding: 10px; margin: 5px 0; }
+        #query { width: 80%; background-color: #fff; color: #333; border: 1px solid #ddd; }
+        button { cursor: pointer; background-color: #4CAF50; color: white; border: none; font-weight: bold; }
+        h1 { color: #4CAF50; }
+        .product-title { margin-top: 0; color: #333; }
+        .price { color: #e63946; font-weight: bold; margin-bottom: 5px; }
+        .original-price { text-decoration: line-through; color: #777; margin-left: 10px; }
+        .category, .rating { margin-bottom: 5px; }
+        .loading { text-align: center; margin: 20px 0; }
+        .link { margin-top: 10px; }
+        .link a { color: #0066cc; text-decoration: none; }
+        .link a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Appliance Finder</h1>
+        <div>
+            <input type="text" id="query" placeholder="Search for appliances...">
+            <button id="search">Search</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // Add a log function to write to our error box
+            function log(message) {
+                console.log(message);
+            }
+            
+            log("Page loaded, jQuery version: " + $.fn.jquery);
+            log("API endpoint: " + window.location.origin + "/invocations");
+            
+            $("#search").click(function() {
+                var query = $("#query").val();
+                if (!query) {
+                    alert("Please enter a search query");
+                    return;
+                }
+                
+                log("Search button clicked, query: " + query);
+                $("#results").html('<div class="loading">Searching appliances...</div>');
+                
+                // Prepare the request payload
+                var payload = {
+                    inputs: { query: [query] },
+                    params: { show_score: false, top_n: 5 }
+                };
+                
+                log("Request payload: " + JSON.stringify(payload, null, 2));
+                
+                $.ajax({
+                    url: window.location.origin + "/invocations",
+                    type: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify(payload),
+                    success: function(response) {
+                        log("Received response: " + JSON.stringify(response, null, 2));
+                        
+                        $("#results").empty();
+                        
+                        // Handle predictions
+                        var predictions = [];
+                        
+                        // Check if response has double-nested structure
+                        if (response.predictions && response.predictions.predictions) {
+                            predictions = response.predictions.predictions;
+                            log("Found double-nested predictions structure");
+                        } else if (response.predictions && Array.isArray(response.predictions)) {
+                            predictions = response.predictions;
+                            log("Found standard predictions structure");
+                        } else {
+                            log("Could not find valid predictions array");
+                        }
+                        
+                        // Process predictions if any were found
+                        if (predictions && predictions.length > 0) {
+                            log("Processing " + predictions.length + " predictions");
+                            
+                            predictions.forEach(function(item, index) {
+                                log("Processing item " + index);
+                                
+                                // Extract product details
+                                var name = item.Name || "Unknown Product";
+                                var price = item.Price || "";
+                                var originalPrice = item.OriginalPrice || "";
+                                var category = item.Category || "";
+                                var rating = item.Rating || "";
+                                var image = item.Image || "";
+                                var link = item.Link || "";
+                                
+                                $("#results").append(`
+                                    <div class="result">
+                                        <div class="image-container">
+                                            <img src="${image}" alt="${name}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'">
+                                        </div>
+                                        <div class="details">
+                                            <h3 class="product-title">${name}</h3>
+                                            <div class="price">
+                                                Price: ${price}
+                                                <span class="original-price">${originalPrice}</span>
+                                            </div>
+                                            <div class="category">Category: ${category}</div>
+                                            <div class="rating">Rating: ${rating}</div>
+                                            <div class="link">
+                                                <a href="${link}" target="_blank">View Product</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `);
+                            });
+                        } else {
+                            log("No predictions found to display");
+                            $("#results").html(`
+                                <div class="result">
+                                    <h3>No results found</h3>
+                                    <p>The model did not return any predictions.</p>
+                                </div>
+                            `);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        log("ERROR: " + error);
+                        log("Status: " + status);
+                        log("Status code: " + (xhr.status || "unknown"));
+                        log("Response text: " + (xhr.responseText || "none"));
+                        
+                        $("#results").html(`
+                            <div class="result">
+                                <h3>Error</h3>
+                                <p>Error fetching results: ${error}</p>
+                                <p>Status: ${status}</p>
+                            </div>
+                        `);
+                    }
+                });
+            });
+            
+            // Allow pressing Enter to search
+            $("#query").keypress(function(e) {
+                if (e.which == 13) { // Enter key
+                    $("#search").click();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

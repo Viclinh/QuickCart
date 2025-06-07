@@ -59,8 +59,9 @@ http://localhost:8080
 
 ## Technologies Used
 
+- HP AI Studio
 - Hugging Face Transformers for embeddings
-- MLflow for model deployment
-- Flask for web serving
+- MLflow for model deployment 
+- App is deployed to Swagger through AIS
 - Pandas for data processing
 - scikit-learn for similarity calculations
